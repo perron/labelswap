@@ -25,6 +25,14 @@ class ModelTests(unittest.TestCase):
     def test_tokenize_adds_bigrams(self):
         self.assertEqual(tokenize("Site DOWN now"), ["site", "down", "now", "site_down", "down_now"])
 
+    def test_tokenize_keeps_unicode_words(self):
+        self.assertEqual(
+            tokenize("Réclamation overdue"),
+            ["réclamation", "overdue", "réclamation_overdue"],
+        )
+        self.assertIn("münchen", tokenize("München billing"))
+        self.assertEqual(tokenize("结算失败"), ["结算失败"])
+
     def test_predicts_obvious_labels(self):
         m = Model().fit(ROWS)
         self.assertEqual(m.decide("my charge needs a refund")["label"], "billing")

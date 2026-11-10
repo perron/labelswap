@@ -10,11 +10,12 @@ from dataclasses import dataclass, field
 from typing import Iterable
 
 FORMAT = "labelswap/1"
-_TOKEN = re.compile(r"[a-z0-9]+(?:'[a-z]+)?")
+# Letters and digits in any script, plus simple contractions like "it's".
+_TOKEN = re.compile(r"[^\W_]+(?:'[^\W_]+)?", re.UNICODE)
 
 
 def tokenize(text: str) -> list[str]:
-    words = _TOKEN.findall(text.lower())
+    words = _TOKEN.findall(text.casefold())
     return words + [f"{a}_{b}" for a, b in zip(words, words[1:])]
 
 
