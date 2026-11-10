@@ -69,10 +69,14 @@ class Model:
         z = sum(exp.values())
         return {k: val / z for k, val in exp.items()}
 
-    def decide(self, text: str) -> dict:
+    def top(self, text: str) -> tuple[str, float]:
+        """Return the top label and its unrounded probability."""
         probs = self.proba(text)
         label = max(sorted(probs), key=lambda k: probs[k])
-        conf = probs[label]
+        return label, probs[label]
+
+    def decide(self, text: str) -> dict:
+        label, conf = self.top(text)
         return {
             "label": label,
             "confidence": round(conf, 6),
@@ -117,15 +121,15 @@ def shadow(model: Model, rows: list[tuple[str, str]], threshold: float | None = 
     accepted = agree = overall_agree = 0
     confusion: Counter = Counter()
     for text, ref in rows:
-        d = model.decide(text)
-        if d["label"] == ref:
+        label, conf = model.top(text)
+        if label == ref:
             overall_agree += 1
-        if d["confidence"] >= t:
+        if conf >= t:
             accepted += 1
-            if d["label"] == ref:
+            if label == ref:
                 agree += 1
             else:
-                confusion[(ref, d["label"])] += 1
+                confusion[(ref, label)] += 1
     return {
         "rows": total,
         "threshold": t,
@@ -146,8 +150,8 @@ def tune(model: Model, rows: list[tuple[str, str]], target: float) -> dict:
         raise ValueError("no rows to tune on")
     scored = []
     for text, ref in rows:
-        d = model.decide(text)
-        scored.append((d["confidence"], d["label"] == ref))
+        label, conf = model.top(text)
+        scored.append((conf, label == ref))
     scored.sort(key=lambda x: -x[0])
     best = None
     agree = 0

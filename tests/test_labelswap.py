@@ -72,6 +72,48 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(rep["local_calls"], 1)
         self.assertEqual(rep["top_mistakes"][0]["reference"], "billing")
 
+    def test_gate_and_shadow_use_unrounded_confidence(self):
+        """tune used to store round(conf, 6) as the gate, so an example that
+        set the cut could then defer because its raw score was just below the
+        rounded-up threshold. shadow also compared the rounded display value.
+        """
+        m = Model().fit([
+            ("alpha beta gamma", "L1"),
+            ("alpha beta gamma delta", "L1"),
+            ("omega zeta eta", "L2"),
+            ("omega zeta", "L2"),
+        ])
+        text = "omega foo zeta delta"
+        label, raw = m.top(text)
+        self.assertEqual(label, "L2")
+        self.assertGreater(round(raw, 6), raw)
+        m.threshold = raw
+        self.assertEqual(m.decide(text)["action"], "local")
+        self.assertEqual(shadow(m, [(text, "L2")])["local_calls"], 1)
+        # shadow must follow decide even if the gate sits on the rounded display value
+        m.threshold = round(raw, 6)
+        action = m.decide(text)["action"]
+        rep = shadow(m, [(text, "L2")])
+        if action == "local":
+            self.assertEqual(rep["local_calls"], 1)
+        else:
+            self.assertEqual(rep["deferred_calls"], 1)
+
+    def test_tuned_gate_accepts_the_cut_example(self):
+        m = Model().fit(ROWS)
+        rows = ROWS + [("site is down 503", "outage"), ("card charge refund", "billing")]
+        tune(m, rows, 0.5)
+        accepted = 0
+        for text, _ref in rows:
+            _label, raw = m.top(text)
+            d = m.decide(text)
+            if raw >= m.threshold:
+                self.assertEqual(d["action"], "local")
+                accepted += 1
+            else:
+                self.assertEqual(d["action"], "defer")
+        self.assertEqual(shadow(m, rows)["local_calls"], accepted)
+
 
 class CliTests(unittest.TestCase):
     def setUp(self):
