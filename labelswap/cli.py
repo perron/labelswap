@@ -21,6 +21,8 @@ def read_rows(path: str, text_field: str, label_field: str, need_label: bool = T
                 obj = json.loads(line)
             except json.JSONDecodeError as e:
                 raise SystemExit(f"{path}:{n}: bad JSON ({e.msg})")
+            if not isinstance(obj, dict):
+                raise SystemExit(f"{path}:{n}: expected a JSON object")
             if text_field not in obj:
                 raise SystemExit(f"{path}:{n}: missing field '{text_field}'")
             label = obj.get(label_field)
@@ -83,6 +85,8 @@ def main(argv=None) -> int:
     if a.cmd == "train":
         if not 0 <= a.holdout < 1:
             p.error("--holdout must be in [0, 1)")
+        if not 0 <= a.target <= 1:
+            p.error("--target must be in [0, 1]")
         rows = read_rows(a.data, a.text_field, a.label_field)
         train = [r for r in rows if not in_holdout(r[0], a.holdout)]
         hold = [r for r in rows if in_holdout(r[0], a.holdout)]
@@ -103,7 +107,12 @@ def main(argv=None) -> int:
             else:
                 print("no holdout rows, so no gate was tuned and every call defers")
         return 0
-    model = Model.load(a.model)
+    try:
+        model = Model.load(a.model)
+    except FileNotFoundError:
+        raise SystemExit(f"model file not found: {a.model}")
+    except (OSError, ValueError, json.JSONDecodeError, KeyError, TypeError) as e:
+        raise SystemExit(f"cannot load model {a.model}: {e}")
     if a.cmd == "shadow":
         rep = shadow(model, read_rows(a.data, a.text_field, a.label_field))
         print(json.dumps(rep, indent=2) if a.json else "", end="\n" if a.json else "")

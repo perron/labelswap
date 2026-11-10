@@ -155,6 +155,32 @@ class CliTests(unittest.TestCase):
             self.run_cli("train", str(bad))
         self.assertIn(":2:", str(cm.exception))
 
+    def test_non_object_jsonl_reports_line_number(self):
+        bad = self.tmp / "bad.jsonl"
+        bad.write_text("123\n")
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("train", str(bad))
+        msg = str(cm.exception)
+        self.assertIn(":1:", msg)
+        self.assertIn("JSON object", msg)
+
+    def test_missing_model_file_is_clean_error(self):
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("decide", str(self.tmp / "nope.json"), "--text", "x")
+        self.assertIn("not found", str(cm.exception).lower())
+
+    def test_foreign_model_file_is_clean_error(self):
+        path = self.tmp / "foreign.json"
+        path.write_text('{"format": "other"}')
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("decide", str(path), "--text", "x")
+        self.assertIn("cannot load model", str(cm.exception))
+
+    def test_target_out_of_range_is_rejected(self):
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("train", str(self.data), "--target", "1.5")
+        self.assertEqual(cm.exception.code, 2)
+
     def test_module_entry_point_runs(self):
         r = subprocess.run([sys.executable, "-m", "labelswap", "--version"], capture_output=True, text=True, cwd=ROOT)
         self.assertEqual(r.returncode, 0)
