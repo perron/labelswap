@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "labelswap"
+version = "0.1.0"
+description = "Replace repetitive LLM labeling calls with a tiny local model that defers to the LLM when unsure."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Karl Perron"}]
+keywords = ["ai", "llm", "classification", "cost", "cli"]
+dependencies = []
+
+[project.scripts]
+labelswap = "labelswap.cli:main"
+
+[project.urls]
+Repository = "https://github.com/perron/labelswap"
+
+[tool.setuptools]
+packages = ["labelswap"]
