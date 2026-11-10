@@ -7,11 +7,15 @@ It is one small Python package with no dependencies and no API key.
 ## Quick start
 
 ```
-pip install git+https://github.com/perron/labelswap
+git clone https://github.com/perron/labelswap
+cd labelswap
+pip install -e .
 python examples/make_tickets.py            # writes a made-up demo log
 labelswap train examples/tickets.jsonl --target 0.98 --cost 0.02
 labelswap decide labelswap.json --text "checkout is down and returns 503 errors"
 ```
+
+The example script lives in the repo, so clone it first, then install. If you already have a JSONL log, `pip install git+https://github.com/perron/labelswap` is enough and you can skip the demo script.
 
 Input is JSONL with one logged LLM call per line: `{"text": "...", "label": "..."}`. Use `--text-field` and `--label-field` if your log uses other names.
 
@@ -22,15 +26,19 @@ Input is JSONL with one logged LLM call per line: `{"text": "...", "label": "...
 3. `decide` returns `{"label", "confidence", "action"}`, where `action` is `local` or `defer`. Call your LLM only on `defer`.
 4. `shadow` runs the model next to fresh LLM labels, so you can watch agreement before you trust it. The tuning numbers from `train` are measured on the same slice that set the gate, so treat them as optimistic until `shadow` confirms them on new data.
 
-Demo output on the synthetic ticket log (600 made-up rows, 5 labels):
+Demo output on the synthetic ticket log (600 made-up rows, 5 labels), reported on the 141-row held-out slice:
 
 ```
+trained on 459 rows, 5 labels, saved labelswap.json
+rows checked:          141
+confidence gate:       0.9959
 handled locally:       136 (96.5%)
+deferred to the LLM:   5
 agreement when local:  98.5%
 target agreement:      98.0% (met)
 ```
 
-That demo data is deliberately easy. Real logs will cover less, and that's the point of the gate.
+That demo data is deliberately easy. Real logs will cover less, and that's the point of the gate. Naive Bayes can also be very confident when it is wrong — one holdout mistake in this demo has confidence 1.0 — so a high gate still lets some errors through. That's what `shadow` is for.
 
 ## Rollout pattern
 
@@ -42,7 +50,7 @@ Inspired by the Strands Agents post [Amazon saves millions by replacing Sonnet 4
 
 ## Point your agents at it
 
-Agents can read [AGENTS.md](AGENTS.md) and wire `labelswap decide` in front of any classification prompt. Or write your own version; the whole model is about 150 lines.
+Agents can read [AGENTS.md](AGENTS.md) and wire `labelswap decide` in front of any classification prompt. Or write your own version; the whole model is about 170 lines.
 
 ## Contributing
 
